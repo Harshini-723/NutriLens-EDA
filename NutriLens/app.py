@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from pathlib import Path
+
 from modules.analysis import (
     profile_dataset,
     missing_summary,
@@ -16,7 +18,10 @@ from modules.analysis import (
     safe_categorical_columns
 )
 
-# ---------- Page configuration ----------
+# ============================================================
+# PAGE CONFIGURATION
+# ============================================================
+
 st.set_page_config(
     page_title="NutriLens | Food & Nutrition Insight Explorer",
     page_icon="🥗",
@@ -24,9 +29,48 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ---------- Visual system ----------
+# ============================================================
+# SAMPLE DATASET LOADER - FIXED
+# ============================================================
+
+BASE_DIR = Path(__file__).resolve().parent
+
+def load_sample_dataset():
+
+    possible_paths = [
+        BASE_DIR / "data" / "sample_food_data.csv",
+        BASE_DIR / "Data" / "sample_food_data.csv",
+        BASE_DIR.parent / "data" / "sample_food_data.csv",
+        BASE_DIR / "sample_food_data.csv",
+        Path.cwd() / "data" / "sample_food_data.csv"
+    ]
+
+    for file_path in possible_paths:
+
+        if file_path.is_file():
+
+            df = pd.read_csv(file_path)
+
+            if df.empty:
+                raise ValueError("The sample dataset contains no records.")
+
+            return df
+
+    checked_paths = "\n".join(str(p) for p in possible_paths)
+
+    raise FileNotFoundError(
+        "sample_food_data.csv was not found.\n"
+        "Checked locations:\n" + checked_paths
+    )
+
+
+# ============================================================
+# VISUAL SYSTEM
+# ============================================================
+
 st.markdown("""
 <style>
+
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap');
 
 :root {
@@ -81,8 +125,6 @@ h1 {
     border-radius: 24px;
     padding: 34px 38px;
     margin-bottom: 22px;
-    position: relative;
-    overflow: hidden;
 }
 
 .hero h1 {
@@ -152,14 +194,8 @@ h1 {
     letter-spacing: .13em;
 }
 
-div[data-testid="stMetric"] {
-    background: white;
-    border: 1px solid #e3ece6;
-    padding: 15px;
-    border-radius: 15px;
-}
-
-.stButton>button, .stDownloadButton>button {
+.stButton>button,
+.stDownloadButton>button {
     border-radius: 10px;
     font-weight: 700;
 }
@@ -177,6 +213,7 @@ hr {
     color: #73827b;
     font-size: .88rem;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -185,7 +222,11 @@ sns.set_theme(
     palette=["#26765a", "#a6c95b", "#e5a65c", "#6c9ca0"]
 )
 
-# ---------- Navigation ----------
+
+# ============================================================
+# NAVIGATION
+# ============================================================
+
 PAGES = [
     "Home",
     "Dataset Upload",
@@ -199,7 +240,11 @@ PAGES = [
     "Export Data"
 ]
 
-# ---------- Session state ----------
+
+# ============================================================
+# SESSION STATE
+# ============================================================
+
 if "df_original" not in st.session_state:
     st.session_state.df_original = None
 
@@ -210,37 +255,46 @@ if "source_name" not in st.session_state:
     st.session_state.source_name = "No dataset selected"
 
 
-# ---------- Helper functions ----------
+# ============================================================
+# HELPER FUNCTIONS
+# ============================================================
+
 def set_dataset(df, name):
+
     st.session_state.df_original = df.copy()
     st.session_state.df_working = df.copy()
     st.session_state.source_name = name
 
 
 def current_df():
+
     return st.session_state.df_working
 
 
 def require_data():
+
     df = current_df()
 
     if df is None:
+
         st.warning(
-            "No dataset is loaded yet. Open **Dataset Upload** "
+            "No dataset is loaded yet. Open Dataset Upload "
             "and choose the sample dataset or upload a CSV."
         )
+
         return None
 
     if df.empty:
-        st.error(
-            "This dataset has no rows. Load a CSV containing at least one data row."
-        )
+
+        st.error("This dataset has no rows.")
+
         return None
 
     return df
 
 
 def insight(text):
+
     st.markdown(
         f'<div class="insight"><b>💡 What does this mean?</b><br>{text}</div>',
         unsafe_allow_html=True
@@ -248,24 +302,32 @@ def insight(text):
 
 
 def metric(label, value, note=""):
+
     st.markdown(
-        f'<div class="metric-card">'
-        f'<div class="metric-label">{label}</div>'
-        f'<div class="metric-value">{value}</div>'
-        f'<div class="metric-note">{note}</div>'
-        f'</div>',
+        f"""
+        <div class="metric-card">
+            <div class="metric-label">{label}</div>
+            <div class="metric-value">{value}</div>
+            <div class="metric-note">{note}</div>
+        </div>
+        """,
         unsafe_allow_html=True
     )
 
 
 def plot_to_streamlit(fig):
+
     fig.tight_layout()
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
 
-# ---------- Sidebar ----------
+# ============================================================
+# SIDEBAR
+# ============================================================
+
 with st.sidebar:
+
     st.markdown("## 🥗 NutriLens")
     st.caption("🍎 Food & Nutrition Insight Explorer")
 
@@ -280,27 +342,33 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown("**🍽️ ACTIVE DATASET**")
+
     st.caption(st.session_state.source_name)
 
     if current_df() is not None:
+
         st.caption(
             f"📊 {len(current_df()):,} rows · "
             f"{len(current_df().columns):,} columns"
         )
 
     st.markdown("---")
+
     st.caption("🥗 Eat Smart • Explore Data • Discover Insights")
 
 
 # ============================================================
 # HOME PAGE
 # ============================================================
+
 if page == "Home":
 
     st.markdown("""
     <div class="hero">
         <div class="eyebrow">🥗 Explore • Understand • Improve</div>
+
         <h1>Welcome to NutriLens! 🥑</h1>
+
         <p>
         Turn food and nutrition data into meaningful insights.
         Explore nutrients, discover patterns and understand your dataset
@@ -339,6 +407,7 @@ if page == "Home":
     a, b = st.columns([1.15, .85])
 
     with a:
+
         st.markdown("#### 🍽️ Get started")
 
         if st.button(
@@ -346,8 +415,10 @@ if page == "Home":
             type="primary",
             use_container_width=True
         ):
+
             try:
-                sample = pd.read_csv("data/sample_food_data.csv")
+
+                sample = load_sample_dataset()
 
                 set_dataset(
                     sample,
@@ -356,7 +427,10 @@ if page == "Home":
 
                 st.success("🥑 Sample dataset loaded successfully!")
 
+                st.rerun()
+
             except Exception as e:
+
                 st.error(f"Could not load the sample dataset: {e}")
 
         st.caption("📁 Or choose Dataset Upload to use your own CSV.")
@@ -365,6 +439,7 @@ if page == "Home":
 # ============================================================
 # DATASET UPLOAD
 # ============================================================
+
 elif page == "Dataset Upload":
 
     st.markdown(
@@ -381,6 +456,7 @@ elif page == "Dataset Upload":
     left, right = st.columns(2)
 
     with left:
+
         st.markdown("#### 🥗 Built-in sample")
 
         st.write(
@@ -393,8 +469,10 @@ elif page == "Dataset Upload":
             type="primary",
             use_container_width=True
         ):
+
             try:
-                sample = pd.read_csv("data/sample_food_data.csv")
+
+                sample = load_sample_dataset()
 
                 set_dataset(
                     sample,
@@ -402,13 +480,18 @@ elif page == "Dataset Upload":
                 )
 
                 st.success(
-                    f"Loaded {len(sample)} rows and {len(sample.columns)} columns."
+                    f"Loaded {len(sample)} rows and "
+                    f"{len(sample.columns)} columns."
                 )
 
+                st.rerun()
+
             except Exception as e:
+
                 st.error(f"Sample data could not be loaded: {e}")
 
     with right:
+
         st.markdown("#### 📂 Upload your own CSV")
 
         uploaded = st.file_uploader(
@@ -418,22 +501,29 @@ elif page == "Dataset Upload":
         )
 
         if uploaded is not None:
+
             try:
+
                 if uploaded.size == 0:
+
                     st.error("The selected file is empty.")
 
                 else:
+
                     df = pd.read_csv(uploaded)
 
                     if len(df.columns) == 0:
+
                         st.error("No columns were found.")
 
                     elif df.empty:
+
                         st.error(
                             "The CSV has column headings but no data rows."
                         )
 
                     else:
+
                         set_dataset(df, uploaded.name)
 
                         st.success(
@@ -442,19 +532,23 @@ elif page == "Dataset Upload":
                         )
 
             except UnicodeDecodeError:
+
                 st.error(
-                    "The file encoding could not be read. "
                     "Save the file as UTF-8 CSV and try again."
                 )
 
             except pd.errors.ParserError as e:
-                st.error(f"This CSV has an inconsistent row structure: {e}")
+
+                st.error(f"CSV structure error: {e}")
 
             except Exception as e:
-                st.error(f"We could not read this file as a CSV: {e}")
+
+                st.error(f"Unable to read CSV: {e}")
 
     if current_df() is not None:
+
         st.markdown("---")
+
         st.markdown("#### 👀 Current dataset preview")
 
         st.dataframe(
@@ -471,9 +565,11 @@ elif page == "Dataset Upload":
 # ============================================================
 # DATASET OVERVIEW
 # ============================================================
+
 elif page == "Dataset Overview":
 
     st.title("📊 Dataset overview")
+
     st.write("Get a quick map of what is inside your data.")
 
     df = require_data()
@@ -485,23 +581,23 @@ elif page == "Dataset Overview":
         cols = st.columns(4)
 
         with cols[0]:
-            metric("📋 Rows", f"{len(df):,}", "Records in this dataset")
+            metric("📋 Rows", f"{len(df):,}", "Total records")
 
         with cols[1]:
-            metric("📑 Columns", f"{len(df.columns):,}", "Fields or variables")
+            metric("📑 Columns", f"{len(df.columns):,}", "Total fields")
 
         with cols[2]:
             metric(
                 "🔢 Numeric fields",
                 str(len(profile["numeric"])),
-                "Can be measured with numbers"
+                "Numeric variables"
             )
 
         with cols[3]:
             metric(
                 "🏷️ Categorical fields",
                 str(len(profile["categorical"])),
-                "Labels or groups"
+                "Categorical variables"
             )
 
         st.markdown("### 👀 First look")
@@ -522,10 +618,8 @@ elif page == "Dataset Overview":
         insight(
             f"Your dataset contains <b>{len(df):,} rows</b> and "
             f"<b>{len(df.columns):,} columns</b>. "
-            f"A row usually represents one observation, while each column "
-            f"records one feature about it. NutriLens detected "
-            f"{len(profile['numeric'])} numeric and "
-            f"{len(profile['categorical'])} categorical columns."
+            f"NutriLens detected {len(profile['numeric'])} numeric "
+            f"and {len(profile['categorical'])} categorical columns."
         )
 
         st.markdown("### 📈 Quick visual map")
@@ -537,41 +631,46 @@ elif page == "Dataset Overview":
                 profile["numeric"]
             )
 
-            fig, ax = plt.subplots(figsize=(8, 3.4))
+            values = pd.to_numeric(
+                df[selected],
+                errors="coerce"
+            ).dropna()
 
-            sns.histplot(
-                pd.to_numeric(df[selected], errors="coerce").dropna(),
-                kde=True,
-                ax=ax,
-                color="#26765a"
-            )
+            if not values.empty:
 
-            ax.set_title(f"Values in {selected}")
-            ax.set_xlabel(selected)
+                fig, ax = plt.subplots(figsize=(8, 3.4))
 
-            plot_to_streamlit(fig)
+                sns.histplot(
+                    values,
+                    kde=len(values) > 2,
+                    ax=ax,
+                    color="#26765a"
+                )
 
-            insight(
-                "This chart gives a quick picture of how values are spread out. "
-                "Tall areas show value ranges that occur more often."
-            )
+                ax.set_title(f"Values in {selected}")
+                ax.set_xlabel(selected)
+
+                plot_to_streamlit(fig)
+
+            else:
+
+                st.info("No valid numeric values in this column.")
 
         else:
-            st.info(
-                "No numeric columns were detected, "
-                "so a numeric overview chart is not available."
-            )
+
+            st.info("No numeric columns were detected.")
 
 
 # ============================================================
 # DATA QUALITY
 # ============================================================
+
 elif page == "Data Quality":
 
     st.title("🔍 Data quality check")
 
     st.write(
-        "Find gaps, repeated records and possible data-type issues before analysing."
+        "Find gaps, repeated records and possible data-type issues."
     )
 
     df = require_data()
@@ -597,13 +696,13 @@ elif page == "Data Quality":
             metric(
                 "🔁 Duplicate rows",
                 f"{dup:,}",
-                "Rows repeated exactly"
+                "Repeated records"
             )
 
         with c:
             metric(
                 "✅ Complete cells",
-                f"{(df.size-total_missing):,}",
+                f"{df.size-total_missing:,}",
                 "Cells containing a value"
             )
 
@@ -617,10 +716,11 @@ elif page == "Data Quality":
 
         if total_missing:
 
-            fig, ax = plt.subplots(figsize=(8, 3.2))
-
             ms = df.isna().sum().sort_values(ascending=False)
+
             ms = ms[ms > 0]
+
+            fig, ax = plt.subplots(figsize=(8, 3.2))
 
             sns.barplot(
                 x=ms.values,
@@ -635,21 +735,20 @@ elif page == "Data Quality":
 
             insight(
                 f"There are <b>{total_missing}</b> empty cells. "
-                "Empty values can reduce the amount of information available "
-                "to an analysis. Consider removing affected rows or filling "
-                "gaps with a suitable value."
+                "Consider removing affected rows or filling gaps "
+                "with a suitable value."
             )
 
         else:
-            insight("Great — no missing cells were found in the current dataset.")
+
+            insight("Great — no missing cells were found.")
 
         st.markdown("### 🔁 Duplicate records")
 
         if dup:
 
             st.warning(
-                f"{dup} exact duplicate rows were found. "
-                "They may count the same record more than once."
+                f"{dup} exact duplicate rows were found."
             )
 
             st.dataframe(
@@ -658,11 +757,11 @@ elif page == "Data Quality":
             )
 
         else:
+
             st.success("No exact duplicate rows were found.")
 
         insight(
-            f"NutriLens found {dup} duplicate rows. A duplicate is a row "
-            "whose values match another row in every column. "
+            f"NutriLens found {dup} duplicate rows. "
             "Check whether these are accidental repeats before removing them."
         )
 
@@ -670,13 +769,13 @@ elif page == "Data Quality":
 # ============================================================
 # DATA CLEANING
 # ============================================================
+
 elif page == "Data Cleaning":
 
     st.title("🧹 Clean your dataset")
 
     st.write(
-        "Make changes to a separate working copy. "
-        "Your original uploaded/sample data stays unchanged."
+        "Make changes to a separate working copy."
     )
 
     df = require_data()
@@ -684,8 +783,6 @@ elif page == "Data Cleaning":
     if df is not None:
 
         st.markdown("### 🛠️ Choose cleaning actions")
-
-        st.caption("Actions are applied only when you click the button.")
 
         remove_dupes = st.checkbox(
             "🔁 Remove exact duplicate rows",
@@ -704,7 +801,7 @@ elif page == "Data Cleaning":
         )
 
         fill_value = st.text_input(
-            "Fixed fill value (used only for the last option)",
+            "Fixed fill value",
             value="Not provided"
         )
 
@@ -717,6 +814,7 @@ elif page == "Data Cleaning":
         if st.button("🧹 Apply selected cleaning", type="primary"):
 
             if not keep_cols:
+
                 st.error("Select at least one column to keep.")
 
             else:
@@ -757,27 +855,27 @@ elif page == "Data Cleaning":
                 st.session_state.df_original.copy()
             )
 
-            st.success("Working copy restored to the original dataset.")
+            st.success("Original dataset restored.")
 
             st.rerun()
 
         insight(
-            "Cleaning prepares data for analysis. Removing duplicates can "
-            "prevent repeated records from being counted twice. Filling gaps "
-            "is an assumption, so review the method and keep a copy of the "
-            "original data."
+            "Cleaning prepares data for analysis. Removing duplicates "
+            "prevents repeated records from being counted twice. "
+            "Filling gaps requires careful consideration."
         )
 
 
 # ============================================================
 # STATISTICAL ANALYSIS
 # ============================================================
+
 elif page == "Statistical Analysis":
 
     st.title("📊 Statistical analysis")
 
     st.write(
-        "Understand the typical value and how much your numbers vary."
+        "Understand typical values and how much your numbers vary."
     )
 
     df = require_data()
@@ -788,10 +886,7 @@ elif page == "Statistical Analysis":
 
         if not nums:
 
-            st.info(
-                "This dataset has no usable numeric columns. "
-                "Statistical summaries need at least one numeric column."
-            )
+            st.info("No usable numeric columns were detected.")
 
         else:
 
@@ -811,15 +906,13 @@ elif page == "Statistical Analysis":
                 )
 
                 insight(
-                    "The <b>mean</b> is the arithmetic average. "
-                    "The <b>median</b> is the middle value after sorting. "
-                    "The <b>mode</b> is the most common value. "
-                    "Standard deviation describes how far values typically "
-                    "sit from the mean: a larger value means more spread."
+                    "Mean is the arithmetic average. Median is the "
+                    "middle value. Mode is the most common value. "
+                    "Standard deviation describes the spread of values."
                 )
 
                 col = st.selectbox(
-                    "Explore one column in more detail",
+                    "Explore one column",
                     selected
                 )
 
@@ -833,33 +926,31 @@ elif page == "Statistical Analysis":
                     q1, med, q3 = s.quantile([.25, .5, .75])
 
                     st.markdown(
-                        f"**{col}:** average **{s.mean():,.2f}**, "
-                        f"median **{med:,.2f}**, "
-                        f"range **{s.min():,.2f} to {s.max():,.2f}**."
+                        f"**{col}:** Average **{s.mean():,.2f}**, "
+                        f"Median **{med:,.2f}**, "
+                        f"Range **{s.min():,.2f} to {s.max():,.2f}**."
                     )
 
                     insight(
-                        f"Half of the observed {col} values are at or below "
-                        f"{med:,.2f}, and half are at or above it. "
-                        f"The middle half of values lies between "
+                        f"The middle half of {col} values lies between "
                         f"{q1:,.2f} and {q3:,.2f}."
                     )
 
             else:
-                st.info(
-                    "Choose at least one numeric column to see its summary."
-                )
+
+                st.info("Choose at least one numeric column.")
 
 
 # ============================================================
 # DISTRIBUTION ANALYSIS
 # ============================================================
+
 elif page == "Distribution Analysis":
 
     st.title("📈 Distribution analysis")
 
     st.write(
-        "See how one numeric variable is spread across its possible values."
+        "See how one numeric variable is distributed."
     )
 
     df = require_data()
@@ -870,10 +961,7 @@ elif page == "Distribution Analysis":
 
         if not nums:
 
-            st.info(
-                "A histogram or boxplot needs a numeric column. "
-                "No usable numeric columns were detected."
-            )
+            st.info("No numeric columns available.")
 
         else:
 
@@ -889,14 +977,12 @@ elif page == "Distribution Analysis":
 
             if values.empty:
 
-                st.warning(
-                    "This column has no valid numeric values to plot."
-                )
+                st.warning("No valid numeric values to plot.")
 
             else:
 
                 bins = st.slider(
-                    "Histogram detail (number of bins)",
+                    "Histogram detail",
                     5,
                     50,
                     18
@@ -925,9 +1011,7 @@ elif page == "Distribution Analysis":
                     color="#c6df9b"
                 )
 
-                ax.set_title(
-                    f"Spread and possible unusual values: {col}"
-                )
+                ax.set_title(f"Spread and unusual values: {col}")
 
                 plot_to_streamlit(fig)
 
@@ -936,23 +1020,22 @@ elif page == "Distribution Analysis":
                 )
 
                 insight(
-                    "A histogram groups values into ranges; taller bars mean "
-                    "more observations fall in that range. A boxplot shows "
-                    "the middle half of values as a box, the median as a line, "
-                    "and potential unusually distant values as points. "
-                    "These points are clues to inspect, not automatically errors."
+                    "A histogram groups values into ranges. "
+                    "A boxplot displays the median, middle half "
+                    "and potential unusual values."
                 )
 
 
 # ============================================================
 # CATEGORY ANALYSIS
 # ============================================================
+
 elif page == "Category Analysis":
 
     st.title("🍎 Category analysis")
 
     st.write(
-        "Compare groups and see which categories appear most often."
+        "Compare groups and discover frequently occurring categories."
     )
 
     df = require_data()
@@ -963,10 +1046,7 @@ elif page == "Category Analysis":
 
         if not cats:
 
-            st.info(
-                "No categorical columns were detected. "
-                "Category analysis needs text or label-like values."
-            )
+            st.info("No categorical columns were detected.")
 
         else:
 
@@ -997,6 +1077,7 @@ elif page == "Category Analysis":
 
             ax.set_xlabel("Number of rows")
             ax.set_ylabel("")
+
             ax.set_title(f"Most common values in {cat}")
 
             plot_to_streamlit(fig)
@@ -1010,10 +1091,9 @@ elif page == "Category Analysis":
             )
 
             insight(
-                f"The most common value in <b>{cat}</b> is "
-                f"<b>{str(counts.index[0])}</b>, appearing "
-                f"{int(counts.iloc[0])} times. "
-                "Bar length represents how many rows belong to each category."
+                f"The most common value in {cat} is "
+                f"<b>{counts.index[0]}</b>, appearing "
+                f"{int(counts.iloc[0])} times."
             )
 
             nums = safe_numeric_columns(df)
@@ -1021,7 +1101,7 @@ elif page == "Category Analysis":
             if nums:
 
                 st.markdown(
-                    "### 📊 Compare a numeric measure across groups"
+                    "### 📊 Compare numeric values across groups"
                 )
 
                 num = st.selectbox(
@@ -1047,25 +1127,21 @@ elif page == "Category Analysis":
                 )
 
                 insight(
-                    f"This table calculates the average and middle value "
-                    f"of <b>{num}</b> inside each {cat} group. "
-                    "Groups with more rows may provide a more stable "
-                    "comparison. An empty count means that group has "
-                    "no valid numeric values."
+                    f"This table compares the average and median "
+                    f"of {num} within each {cat} group."
                 )
 
 
 # ============================================================
 # SCALING & STANDARDIZATION
 # ============================================================
+
 elif page == "Scaling & Standardization":
 
     st.title("⚖️ Scaling & standardization")
 
     st.write(
-        "Put numeric columns onto comparable scales. "
-        "The original working data is not changed unless you choose "
-        "to save the result."
+        "Transform numeric columns into comparable scales."
     )
 
     df = require_data()
@@ -1076,9 +1152,7 @@ elif page == "Scaling & Standardization":
 
         if not nums:
 
-            st.info(
-                "Scaling needs at least one numeric column."
-            )
+            st.info("Scaling requires at least one numeric column.")
 
         else:
 
@@ -1115,25 +1189,19 @@ elif page == "Scaling & Standardization":
                 if method.startswith("Min"):
 
                     insight(
-                        "Min–max scaling changes each selected column "
-                        "so its smallest value becomes 0 and its largest "
-                        "becomes 1. Values in between are placed "
-                        "proportionally. It is useful when columns use "
-                        "very different units."
+                        "Min-max scaling converts the selected columns "
+                        "to values between 0 and 1."
                     )
 
                 else:
 
                     insight(
-                        "Standardization measures values in "
-                        "standard-deviation units from the average. "
-                        "A value near 0 is close to the average; "
-                        "a positive value is above it and a negative "
-                        "value is below it."
+                        "Standardization converts values into "
+                        "standard-deviation units from the mean."
                     )
 
                 st.download_button(
-                    "⬇️ Download transformed columns as CSV",
+                    "⬇️ Download transformed CSV",
                     transformed.to_csv(index=False).encode("utf-8"),
                     "nutrilens_scaled_data.csv",
                     "text/csv"
@@ -1146,7 +1214,7 @@ elif page == "Scaling & Standardization":
                     st.session_state.df_working = transformed
 
                     st.success(
-                        "Transformed data saved as the current working dataset."
+                        "Transformed data saved successfully."
                     )
 
                     st.rerun()
@@ -1155,6 +1223,7 @@ elif page == "Scaling & Standardization":
 # ============================================================
 # EXPORT DATA
 # ============================================================
+
 elif page == "Export Data":
 
     st.title("📥 Export your data")
@@ -1193,15 +1262,15 @@ elif page == "Export Data":
         )
 
         insight(
-            "The downloaded file contains the current working version. "
-            "If you applied cleaning or saved scaled values, those changes "
-            "are included. Your original file on your device is not overwritten."
+            "The downloaded file contains the current working version, "
+            "including any cleaning or scaling changes you saved."
         )
 
 
 # ============================================================
 # FOOTER
 # ============================================================
+
 st.markdown("---")
 
 st.markdown(
